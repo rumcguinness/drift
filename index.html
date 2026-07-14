@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0A0A0B">
+<title>DRIFT — Polymeter Designer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+:root{
+  --bg:#0A0A0B; --panel:#141416; --panel2:#1C1C1F; --line:#2A2A2E;
+  --silk:#E6E4DF; --dim:#7A7A80; --knob:#9A9AA0;
+  --led:#E0322A; --leddim:#5A1713; --acc:#F2F0EB; --off:#202023;
+  --display:'Saira Condensed','Arial Narrow',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',monospace;
+}
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--silk);font-family:var(--mono);overscroll-behavior:none}
+#app{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:84px}
+button{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;
+  text-transform:uppercase;padding:9px 12px;background:var(--panel2);color:var(--silk);
+  border:1px solid var(--line);border-radius:3px;cursor:pointer}
+button.on{background:var(--knob);color:var(--bg);border-color:var(--knob)}
+button.danger{color:var(--led)}
+input,textarea{font-family:var(--mono);color:var(--silk);background:var(--panel);
+  border:1px solid var(--line);border-radius:3px;outline:none}
+::selection{background:var(--led);color:var(--bg)}
+.silk{font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim)}
+.row{display:flex;gap:6px}
+.row>*{flex:1}
+header.pat{position:sticky;top:0;z-index:10;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:10px 16px}
+.readout{margin-top:8px;font-size:12px;color:var(--led);background:#120A09;
+  border:1px solid var(--leddim);border-radius:3px;padding:6px 10px;
+  display:flex;justify-content:space-between}
+main{padding:16px}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;
+  display:flex;gap:8px;background:var(--panel);border-top:1px solid var(--line);
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+nav.tabs button{flex:1;padding:11px 4px}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  padding:10px;margin-bottom:10px}
+.lanehead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.vlabel{font-family:var(--display);font-weight:700;font-size:14px;color:var(--led);
+  letter-spacing:.06em;min-width:22px}
+.vname{font-family:var(--display);font-weight:500;font-size:14px;letter-spacing:.1em;
+  background:transparent;border:none;border-bottom:1px solid var(--line);
+  border-radius:0;width:82px;padding:2px 0}
+.lastbtn{font-family:var(--mono);font-size:18px;width:34px;height:34px;padding:0;line-height:1}
+.lastval{font-weight:600;font-size:16px;min-width:26px;text-align:center}
+.mute{font-family:var(--mono);font-size:11px;width:28px;height:28px;padding:0}
+.mute.on{background:var(--led);color:var(--bg);border-color:var(--led)}
+.grid8{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:4px}
+.cell{position:relative;aspect-ratio:1;width:100%;background:var(--off);
+  border:1px solid var(--line);border-radius:2px;padding:0}
+.cell.beat{border-color:#3E3E44}
+.cell.beyond{opacity:.15;pointer-events:none}
+.cell.lit{background:var(--led);box-shadow:0 0 8px rgba(224,50,42,.4)}
+.cell.lit.acc{background:var(--acc);box-shadow:0 0 8px rgba(255,255,255,.27)}
+.cell .num{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:8px;color:#404046}
+.cell .rat{position:absolute;top:2px;left:0;right:0;text-align:center;
+  font-family:var(--mono);font-size:8px;font-weight:600;color:var(--bg);line-height:1}
+.cell .prob{position:absolute;bottom:1px;left:0;right:0;text-align:center;
+  font-family:var(--mono);font-size:7px;font-weight:600;color:var(--bg);line-height:1}
+.hint{font-size:10px;color:var(--dim);line-height:1.7;margin-top:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  padding:12px;margin-bottom:10px}
+pre.sheet{font-size:12px;line-height:1.6;background:var(--panel);
+  border:1px solid var(--line);border-radius:4px;padding:12px;overflow-x:auto;
+  white-space:pre;margin:0}
+.libname{font-family:var(--display);font-weight:700;font-size:17px;
+  letter-spacing:.06em;cursor:pointer}
+.libmeta{font-size:11px;color:var(--dim);margin-top:4px}
+.logo{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.22em}
+.logo em{color:var(--led);font-style:normal}
+canvas{display:block;border-radius:4px;border:1px solid var(--line);width:100%}
+input[type=range]{width:100%;accent-color:var(--led);margin-top:10px;background:transparent;border:none}
+.playbtn{width:44px;height:36px;padding:0;font-size:14px}
+.playbtn.on{background:var(--led);border-color:var(--led);color:var(--bg)}
+textarea{width:100%;font-size:12px;padding:8px;resize:vertical}
+.gengrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.gengrid button{padding:9px 4px;font-size:12px}
+.soundsel{font-family:var(--mono);font-size:10px;background:var(--panel2);
+  color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:4px 6px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============ DRIFT v0.3 — standalone ============ */
+"use strict";
+
+const SLOTS=["FULL","TENS","RELS","BRKD"];
+const SLOT_LABELS={FULL:"FULL",TENS:"TENSION",RELS:"RELEASE",BRKD:"BREAKDOWN"};
+const PROB_CYCLE=[null,"O1","O2","PR"];
+const PROB_CHANCE={O1:.75,O2:.5,PR:.3};
+const SOUNDS=["KICK","SNARE","CLHAT","OPHAT","CLAP","TOM","RIM","NOISE"];
+const KEY="drift-v1";
+
+/* ---------- maths ---------- */
+const gcd=(a,b)=>b===0?a:gcd(b,a%b);
+const lcm2=(a,b)=>a*b/gcd(a,b);
+function euclid(k,n,rot=0){
+  if(k<=0)return Array(n).fill(false);
+  if(k>=n)return Array(n).fill(true);
+  const pat=[];let b=0;
+  for(let i=0;i<n;i++){b+=k;if(b>=n){b-=n;pat.push(true)}else pat.push(false)}
+  const r=((rot%n)+n)%n;
+  return pat.map((_,i)=>pat[(i-r+n)%n]);
+}
+function mulberry32(seed){let a=seed>>>0;return function(){a|=0;a=(a+0x6D2B79F5)|0;
+  let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;
+  return((t^(t>>>14))>>>0)/4294967296}}
+
+/* ---------- model ---------- */
+const emptyStep=()=>({on:false,acc:false,rat:false,prob:null});
+const defaultSound=i=>["KICK","SNARE","CLHAT","TOM"][i]||"TOM";
+const mkVoice=(name,last,hits=[],sound)=>({name,last,notes:"",muted:false,
+  sound:sound||"TOM",
+  steps:Array.from({length:16},(_,i)=>({...emptyStep(),on:hits.includes(i+1)}))});
+const mkSlot=(voices,initialised)=>({initialised,voices});
+const dc=o=>JSON.parse(JSON.stringify(o));
+const uid=()=>String(Date.now())+Math.random().toString(36).slice(2,6);
+
+function defaultPattern(){
+  return {id:uid(),name:"NEW PATTERN",bpm:130,created:Date.now(),setup:"",
+    slots:{
+      FULL:mkSlot([mkVoice("KICK",16,[1,5,9,13],"KICK"),mkVoice("SNARE",10,[],"SNARE"),
+        mkVoice("HAT",7,[],"CLHAT"),mkVoice("PERC",11,[],"TOM")],true),
+      TENS:mkSlot([mkVoice("KICK",16,[],"KICK"),mkVoice("SNARE",10,[],"SNARE"),
+        mkVoice("HAT",7,[],"CLHAT"),mkVoice("PERC",11,[],"TOM")],false),
+      RELS:mkSlot([mkVoice("KICK",16,[],"KICK"),mkVoice("SNARE",10,[],"SNARE"),
+        mkVoice("HAT",7,[],"CLHAT"),mkVoice("PERC",11,[],"TOM")],false),
+      BRKD:mkSlot([mkVoice("KICK",16,[],"KICK"),mkVoice("SNARE",10,[],"SNARE"),
+        mkVoice("HAT",7,[],"CLHAT"),mkVoice("PERC",11,[],"TOM")],false),
+    }};
+}
+function migrate(p){
+  if(p.setup===undefined)p.setup="";
+  SLOTS.forEach(k=>p.slots[k].voices.forEach((v,i)=>{
+    if(v.sound===undefined)v.sound=defaultSound(i);
+    if(v.muted===undefined)v.muted=false;
+  }));
+  return p;
+}
+
+const p2=n=>String(n).padStart(2,"0");
+const fmtDate=ts=>{const d=new Date(ts);
+  return p2(d.getDate())+p2(d.getMonth()+1)+String(d.getFullYear()).slice(2)};
+const fmtTime=s=>Math.floor(s/60)+":"+p2(Math.round(s%60));
+const voiceActive=v=>v.steps.slice(0,v.last).some(s=>s.on);
+function cycleInfo(slot,bpm){
+  const act=slot.voices.filter(voiceActive);
+  const lasts=act.length?act.map(v=>v.last):[16];
+  const steps=lasts.reduce((a,b)=>lcm2(a,b),1);
+  return {steps,secs:steps*(60/bpm/4),bars:steps/16};
+}
+
+/* ---------- storage ---------- */
+function load(){
+  try{const r=localStorage.getItem(KEY);
+    if(r){const s=JSON.parse(r);
+      if(Array.isArray(s.patterns))return s.patterns.map(migrate)}}
+  catch(e){}
+  return [defaultPattern()];
+}
+let saveTimer=null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    try{localStorage.setItem(KEY,JSON.stringify({patterns:S.patterns}))}
+    catch(e){console.error("Save failed",e)}
+  },400);
+}
+
+/* ---------- state ---------- */
+const S={
+  patterns:load(),
+  openId:null,
+  slotKey:"FULL",
+  tab:"EDIT",
+  tool:"HIT",
+  gen:{style:"PAS",drift:"DRIFT",autoVar:true,seed:Math.floor(Math.random()*1e9),result:null},
+  scrub:0,
+};
+const pat=()=>S.patterns.find(p=>p.id===S.openId)||null;
+function mutate(fn){const p=pat();if(!p)return;fn(p);save();render()}
+
+/* ================= 909-STYLE PREVIEW ENGINE ================= */
+const Audio909={
+  ctx:null,playing:false,step:0,nextTime:0,timer:null,comp:null,
+  ensure(){
+    if(!this.ctx){
+      this.ctx=new (window.AudioContext||window.webkitAudioContext)();
+      this.comp=this.ctx.createDynamicsCompressor();
+      this.comp.threshold.value=-12;this.comp.ratio.value=4;
+      this.comp.connect(this.ctx.destination);
+    }
+    if(this.ctx.state==="suspended")this.ctx.resume();
+  },
+  out(vel,t){
+    const g=this.ctx.createGain();
+    g.gain.value=vel;g.connect(this.comp);return g;
+  },
+  noiseBuf(){
+    if(this._nb)return this._nb;
+    const b=this.ctx.createBuffer(1,this.ctx.sampleRate,this.ctx.sampleRate);
+    const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    this._nb=b;return b;
+  },
+  noise(t,dur,filterType,freq,q,vel,env=0.001){
+    const src=this.ctx.createBufferSource();src.buffer=this.noiseBuf();src.loop=true;
+    const f=this.ctx.createBiquadFilter();f.type=filterType;f.frequency.value=freq;f.Q.value=q;
+    const g=this.out(0,t);
+    g.gain.setValueAtTime(vel,t+env);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    src.connect(f);f.connect(g);
+    src.start(t);src.stop(t+dur+0.05);
+  },
+  tone(t,dur,type,f0,f1,vel){
+    const o=this.ctx.createOscillator();o.type=type;
+    o.frequency.setValueAtTime(f0,t);
+    if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+dur*0.6);
+    const g=this.out(0,t);
+    g.gain.setValueAtTime(vel,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g);o.start(t);o.stop(t+dur+0.05);
+  },
+  trig(sound,t,accent){
+    const v=accent?1.0:0.6;
+    switch(sound){
+      case "KICK":
+        this.tone(t,0.35,"sine",150,44,v*1.1);
+        this.noise(t,0.02,"lowpass",3000,1,v*0.5);
+        break;
+      case "SNARE":
+        this.tone(t,0.12,"triangle",185,140,v*0.5);
+        this.noise(t,0.18,"bandpass",1400,0.8,v*0.7);
+        break;
+      case "CLHAT":
+        this.noise(t,0.05,"highpass",7500,1.2,v*0.55);
+        break;
+      case "OPHAT":
+        this.noise(t,0.32,"highpass",7000,1.2,v*0.5);
+        break;
+      case "CLAP":
+        [0,0.012,0.024].forEach(o=>this.noise(t+o,0.05,"bandpass",1100,1.5,v*0.55));
+        this.noise(t+0.03,0.2,"bandpass",1100,1,v*0.4);
+        break;
+      case "TOM":
+        this.tone(t,0.28,"sine",170,78,v*0.85);
+        break;
+      case "RIM":
+        this.noise(t,0.03,"bandpass",1700,6,v*0.8);
+        break;
+      case "NOISE":
+        this.noise(t,0.1,"bandpass",2600,0.6,v*0.5);
+        break;
+    }
+  },
+  scheduleStep(g,t,dur){
+    const p=pat();if(!p)return;
+    const slot=p.slots[S.slotKey];
+    slot.voices.forEach(v=>{
+      if(v.muted||!voiceActive(v))return;
+      const st=v.steps[g%v.last];
+      if(!st.on)return;
+      if(st.prob&&Math.random()>PROB_CHANCE[st.prob])return;
+      this.trig(v.sound,t,st.acc);
+      if(st.rat)this.trig(v.sound,t+dur/2,st.acc);
+    });
+  },
+  start(){
+    const p=pat();if(!p)return;
+    this.ensure();
+    this.playing=true;this.step=0;
+    this.nextTime=this.ctx.currentTime+0.06;
+    const tick=()=>{
+      if(!this.playing)return;
+      const pp=pat();if(!pp){this.stop();return}
+      const dur=60/pp.bpm/4;
+      while(this.nextTime<this.ctx.currentTime+0.12){
+        this.scheduleStep(this.step,this.nextTime,dur);
+        this.nextTime+=dur;this.step++;
+      }
+      this.timer=setTimeout(tick,25);
+    };
+    tick();
+    render();
+  },
+  stop(){this.playing=false;clearTimeout(this.timer);render()},
+  toggle(){this.playing?this.stop():this.start()},
+};
+
+/* ================= SUGGESTION ENGINE ================= */
+const DRIFT_POOLS={TIGHT:[8,12,16,16],DRIFT:[7,10,12,14,16],DEEP:[7,9,11,13]};
+function setOn(v,i,props={}){v.steps[i]={...v.steps[i],on:true,...props}}
+function hitsOf(v){return v.steps.slice(0,v.last).map((s,i)=>s.on?i:-1).filter(i=>i>=0)}
+function applyEuclid(v,k,rot){euclid(k,v.last,rot).forEach((on,i)=>{if(on)setOn(v,i)})}
+function offbeat(v){for(let i=2;i<v.last;i+=4)setOn(v,i)}
+function pickDistinct(pool,n,rng,exclude=[]){
+  const c=pool.filter(x=>!exclude.includes(x));const out=[];
+  while(out.length<n&&c.length)out.push(c.splice(Math.floor(rng()*c.length),1)[0]);
+  while(out.length<n)out.push(pool[Math.floor(rng()*pool.length)]);
+  return out;
+}
+function addGhosts(v,count,prob,rng){
+  const e=v.steps.slice(0,v.last).map((s,i)=>!s.on?i:-1).filter(i=>i>=0&&i%4!==0);
+  for(let c=0;c<count&&e.length;c++)
+    setOn(v,e.splice(Math.floor(rng()*e.length),1)[0],{prob});
+}
+function addRatchets(v,count,rng){
+  const h=hitsOf(v).filter(i=>i!==0);
+  for(let c=0;c<count&&h.length;c++)
+    v.steps[h.splice(Math.floor(rng()*h.length),1)[0]].rat=true;
+}
+
+const STYLES={
+  PAS:{label:"PAS ROLLING",bpm:133,
+    blurb:"Locked 4/4, off-beat tops, one drifting perc loop. Hypnotic roll.",
+    gen(rng,drift){
+      const pool=DRIFT_POOLS[drift];
+      const [lA,lB]=pickDistinct(pool,2,rng,[16]);
+      const kick=mkVoice("KICK",16,[1,5,9,13],"KICK");kick.steps[0].acc=true;
+      if(rng()<.3)setOn(kick,15,{prob:"O1"});
+      const hat=mkVoice("HAT",drift==="TIGHT"?16:lA,[],"CLHAT");
+      if(hat.last%4===0)offbeat(hat);
+      else applyEuclid(hat,Math.max(2,Math.round(hat.last*.45)),Math.floor(rng()*hat.last));
+      addRatchets(hat,1,rng);
+      const perc=mkVoice("PERC",lB,[],"TOM");
+      applyEuclid(perc,Math.max(2,Math.round(lB*.32)),Math.floor(rng()*lB));
+      const h=hitsOf(perc);if(h.length)perc.steps[h[0]].acc=true;
+      const ride=mkVoice("RIDE",drift==="DEEP"?pickDistinct(pool,1,rng,[lA,lB])[0]:12,[],"OPHAT");
+      applyEuclid(ride,Math.max(2,Math.round(ride.last*.5)),Math.floor(rng()*ride.last));
+      addGhosts(ride,1,"PR",rng);
+      return [kick,hat,perc,ride];
+    }},
+  BEND:{label:"BENDERS DRIFT",bpm:130,
+    blurb:"Fixed kick anchor, three sparse voices at mismatched LASTs. Long evolving cycles.",
+    gen(rng,drift){
+      const pool=drift==="TIGHT"?DRIFT_POOLS.DRIFT:DRIFT_POOLS[drift];
+      const lasts=pickDistinct(pool,3,rng,[16]);
+      const kick=mkVoice("KICK",16,[1,5,9,13],"KICK");kick.steps[0].acc=true;
+      const names=["SNARE","HAT","PERC"],snds=["SNARE","CLHAT","RIM"];
+      const voices=[kick];
+      lasts.forEach((L,i)=>{
+        const v=mkVoice(names[i],L,[],snds[i]);
+        applyEuclid(v,Math.min(2+Math.floor(rng()*2),L-1),Math.floor(rng()*L));
+        if(i===2)addGhosts(v,1,"O2",rng);
+        if(i===1&&rng()<.4)addRatchets(v,1,rng);
+        voices.push(v);
+      });
+      return voices;
+    }},
+  ORPHX:{label:"ORPHX INDUSTRIAL",bpm:138,
+    blurb:"Driving noise pulse, accented stabs, ghost kick. Grinding forward motion.",
+    gen(rng,drift){
+      const pool=DRIFT_POOLS[drift];
+      const kick=mkVoice("KICK",16,[1,5,9,13],"KICK");
+      kick.steps[0].acc=true;kick.steps[8].acc=true;
+      if(rng()<.5)setOn(kick,10,{prob:"O1"});
+      const noise=mkVoice("NOISE",drift==="DEEP"?13:16,[],"NOISE");
+      for(let i=0;i<noise.last;i++)setOn(noise,i);
+      for(let i=0;i<noise.last;i+=4)noise.steps[i].acc=true;
+      const stab=mkVoice("STAB",pickDistinct(pool,1,rng,[16])[0],[],"TOM");
+      applyEuclid(stab,2+Math.floor(rng()*2),Math.floor(rng()*stab.last));
+      hitsOf(stab).forEach(i=>stab.steps[i].acc=true);
+      const metal=mkVoice("METAL",pickDistinct(pool,1,rng,[16,stab.last])[0],[],"RIM");
+      applyEuclid(metal,Math.max(3,Math.round(metal.last*.4)),Math.floor(rng()*metal.last));
+      addRatchets(metal,2,rng);
+      return [kick,noise,stab,metal];
+    }},
+  T47:{label:"T47 BROKEN",bpm:128,
+    blurb:"Broken kick placements, backbeat clap, dense metallic loop off-grid.",
+    gen(rng,drift){
+      const kt=[[1,8,11],[1,4,11,14],[1,7,11],[1,5,8,15]];
+      const kick=mkVoice("KICK",16,kt[Math.floor(rng()*kt.length)],"KICK");
+      kick.steps[0].acc=true;
+      const clap=mkVoice("CLAP",16,rng()<.5?[5,13]:[9],"CLAP");
+      hitsOf(clap).forEach(i=>clap.steps[i].acc=true);
+      const metal=mkVoice("METAL",drift==="TIGHT"?12:pickDistinct([11,13,9],1,rng)[0],[],"RIM");
+      applyEuclid(metal,Math.max(4,Math.round(metal.last*.45)),Math.floor(rng()*metal.last));
+      addRatchets(metal,1,rng);
+      const tick=mkVoice("TICK",pickDistinct([7,9,14],1,rng,[metal.last])[0],[],"CLHAT");
+      applyEuclid(tick,2+Math.floor(rng()*2),Math.floor(rng()*tick.last));
+      addGhosts(tick,2,"PR",rng);
+      return [kick,clap,metal,tick];
+    }},
+  HDLS:{label:"HEADLESS SPARSE",bpm:126,
+    blurb:"Restrained 4/4, rolling tom loop, halftime snare, airy texture voice.",
+    gen(rng,drift){
+      const kick=mkVoice("KICK",16,[1,5,9,13],"KICK");
+      const tom=mkVoice("TOM",pickDistinct(drift==="DEEP"?[9,11,13]:[8,10,12],1,rng)[0],[],"TOM");
+      applyEuclid(tom,Math.max(2,Math.round(tom.last*.35)),Math.floor(rng()*tom.last));
+      if(rng()<.6)addRatchets(tom,1,rng);
+      const snare=mkVoice("SNARE",16,[9],"SNARE");snare.steps[8].acc=true;
+      const air=mkVoice("AIR",pickDistinct([13,14,11],1,rng,[tom.last])[0],[],"OPHAT");
+      applyEuclid(air,2,Math.floor(rng()*air.last));
+      addGhosts(air,1,"O2",rng);
+      return [kick,tom,snare,air];
+    }},
+  SRGN:{label:"SURGEON TRIBAL",bpm:134,
+    blurb:"Pounding 4/4 with ghost kick, dense rolling toms, clave-derived rim, ratcheted hats. Tribal churn.",
+    gen(rng,drift){
+      const kick=mkVoice("KICK",16,[1,5,9,13],"KICK");
+      kick.steps[0].acc=true;
+      setOn(kick,[6,14][Math.floor(rng()*2)],{prob:"O1"});
+      const tom=mkVoice("TOM",drift==="TIGHT"?12:pickDistinct([10,12,14,9],1,rng)[0],[],"TOM");
+      applyEuclid(tom,Math.max(4,Math.round(tom.last*.5)),Math.floor(rng()*tom.last));
+      const th=hitsOf(tom);
+      th.forEach((i,n)=>{if(n%3===0)tom.steps[i].acc=true});
+      const claves=[[1,4,7,11,13],[1,4,8,11,14],[1,5,8,11,15]];
+      const rim=mkVoice("RIM",16,claves[Math.floor(rng()*claves.length)],"RIM");
+      if(drift==="DEEP"){rim.last=pickDistinct([13,15],1,rng)[0]}
+      const hat=mkVoice("HAT",drift==="DEEP"?pickDistinct([11,14],1,rng,[tom.last])[0]:16,[],"CLHAT");
+      if(hat.last%4===0)offbeat(hat);
+      else applyEuclid(hat,Math.max(3,Math.round(hat.last*.4)),Math.floor(rng()*hat.last));
+      addRatchets(hat,2,rng);
+      return [kick,tom,rim,hat];
+    }},
+};
+
+function deriveVariations(fullVoices,rng){
+  const tens=dc(fullVoices);
+  tens.forEach((v,vi)=>{
+    if(vi===0){if(v.steps[8])v.steps[8].acc=true;return}
+    const e=v.steps.slice(0,v.last).map((s,i)=>!s.on?i:-1).filter(i=>i>=0);
+    if(e.length)setOn(v,e[Math.floor(rng()*e.length)]);
+    addRatchets(v,1,rng);
+  });
+  const rels=dc(fullVoices);
+  rels.forEach((v,vi)=>{
+    if(vi===0)return;
+    hitsOf(v).forEach(i=>{if(rng()<.35)v.steps[i]=emptyStep()});
+  });
+  const brkd=dc(fullVoices);
+  brkd.forEach((v,vi)=>{
+    if(vi===0){v.steps=v.steps.map((s,i)=>i===0&&rng()<.5?s:emptyStep());return}
+    hitsOf(v).forEach(i=>{
+      if(rng()<.5)v.steps[i]=emptyStep();
+      else if(!v.steps[i].prob)v.steps[i].prob="PR";
+    });
+  });
+  return {tens,rels,brkd};
+}
+
+/* ================= SHEET ================= */
+function buildSheet(p,slotKey){
+  const slot=p.slots[slotKey];
+  const info=cycleInfo(slot,p.bpm);
+  const L=[];
+  L.push(`DRIFT SHEET — ${p.name} — ${p.bpm} BPM — ${fmtDate(Date.now())}`);
+  L.push(`SLOT: ${SLOT_LABELS[slotKey]}`);
+  L.push(`CYCLE: ${info.steps} steps · ${fmtTime(info.secs)} · ${info.bars%1===0?info.bars:info.bars.toFixed(1)} bars of 16`);
+  if(p.setup.trim()){L.push("");L.push("SETUP:");p.setup.trim().split("\n").forEach(l=>L.push("  "+l))}
+  L.push("");
+  slot.voices.forEach((v,vi)=>{
+    const grid=v.steps.slice(0,v.last).map(s=>s.on?"x":"-").join(" ");
+    const list=(pred,tag)=>{
+      const h=v.steps.slice(0,v.last).map((s,i)=>pred(s)?i+1:null).filter(Boolean);
+      return h.length?`${tag}: ${h.join(",")}`:null};
+    L.push(`V${vi+1} ${v.name}  LAST ${v.last}`);
+    L.push(grid);
+    const meta=[list(s=>s.on&&s.acc,"ACC"),list(s=>s.on&&s.rat,"RAT"),
+      list(s=>s.on&&s.prob,"PROB")].filter(Boolean);
+    if(meta.length)L.push(meta.join("  "));
+    if(v.notes.trim())v.notes.trim().split("\n").forEach(l=>L.push("NOTES: "+l));
+    L.push("");
+  });
+  return L.join("\n");
+}
+async function copyText(text,btn){
+  try{await navigator.clipboard.writeText(text)}
+  catch(e){
+    const ta=document.createElement("textarea");ta.value=text;
+    document.body.appendChild(ta);ta.select();
+    document.execCommand("copy");document.body.removeChild(ta);
+  }
+  btn.textContent="Copied";btn.classList.add("on");
+  setTimeout(()=>{btn.textContent="Copy sheet";btn.classList.remove("on")},1500);
+}
+
+/* ================= RENDER ================= */
+const app=document.getElementById("app");
+const el=(tag,attrs={},...kids)=>{
+  const n=document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs)){
+    if(k==="class")n.className=v;
+    else if(k.startsWith("on"))n.addEventListener(k.slice(2),v);
+    else if(k==="text")n.textContent=v;
+    else n.setAttribute(k,v);
+  }
+  kids.flat().forEach(k=>{if(k!=null)n.append(k)});
+  return n;
+};
+
+function render(){
+  app.innerHTML="";
+  const p=pat();
+  if(!p)renderLibrary();
+  else renderPattern(p);
+}
+
+/* ---------- library ---------- */
+let confirmDeleteId=null;
+function renderLibrary(){
+  app.append(
+    el("header",{style:"padding:18px 16px 6px"},
+      el("div",{class:"logo"},"DRIFT",el("em",{text:"."})),
+      el("div",{class:"silk",text:"Polymeter designer · Perkons HD-01"})),
+    el("div",{style:"padding:16px"},
+      el("button",{class:"on",style:"width:100%;margin-bottom:14px;padding:13px",
+        onclick:()=>{const np=defaultPattern();S.patterns.unshift(np);
+          S.openId=np.id;S.slotKey="FULL";S.tab="EDIT";save();render()}},
+        "+ New pattern"),
+      ...S.patterns.map(p=>{
+        const info=cycleInfo(p.slots.FULL,p.bpm);
+        const confirming=confirmDeleteId===p.id;
+        const delBtn=confirming
+          ? el("button",{class:"danger",style:"flex:0 0 auto;border-color:var(--led)",
+              onclick:()=>{
+                S.patterns=S.patterns.filter(x=>x.id!==p.id);
+                confirmDeleteId=null;save();render()}},"Sure?")
+          : el("button",{class:"danger",style:"flex:0 0 auto",
+              onclick:()=>{confirmDeleteId=p.id;render()}},"Del");
+        return el("div",{class:"card"},
+          el("div",{class:"libname",text:p.name,
+            onclick:()=>{S.openId=p.id;S.slotKey="FULL";S.tab="EDIT";render()}}),
+          el("div",{class:"libmeta",
+            text:`${p.bpm} BPM · ${info.steps} steps · ${fmtTime(info.secs)} · ${fmtDate(p.created)}`}),
+          el("div",{class:"row",style:"margin-top:10px"},
+            el("button",{onclick:()=>{confirmDeleteId=null;S.openId=p.id;S.slotKey="FULL";S.tab="EDIT";render()}},"Open"),
+            el("button",{style:"flex:0 0 auto",onclick:()=>{
+              confirmDeleteId=null;
+              const cp=dc(p);cp.id=uid();cp.name=p.name+" CPY";cp.created=Date.now();
+              S.patterns.unshift(cp);save();render()}},"Dup"),
+            delBtn));
+      }),
+      S.patterns.length===0?el("div",{style:"font-size:12px;color:var(--dim);text-align:center;margin-top:40px",text:"No patterns yet. Start one."}):null
+    ));
+}
+
+/* ---------- pattern header ---------- */
+function renderPattern(p){
+  const slot=p.slots[S.slotKey];
+  const info=cycleInfo(slot,p.bpm);
+
+  const nameInput=el("input",{value:p.name,
+    style:"flex:1;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.08em;background:transparent;border:none;border-radius:0"});
+  nameInput.addEventListener("input",e=>{
+    p.name=e.target.value.toUpperCase().slice(0,24);save()});
+
+  const bpmInput=el("input",{type:"text",inputmode:"numeric",pattern:"[0-9]*",
+    value:String(p.bpm),
+    style:"width:56px;font-weight:600;font-size:15px;color:var(--led);padding:5px 6px;text-align:center"});
+  bpmInput.addEventListener("input",e=>{
+    e.target.value=e.target.value.replace(/[^0-9]/g,"").slice(0,3)});
+  const commitBpm=()=>{
+    const n=parseInt(bpmInput.value,10);
+    p.bpm=isNaN(n)?p.bpm:Math.max(20,Math.min(300,n));
+    bpmInput.value=String(p.bpm);save();render()};
+  bpmInput.addEventListener("blur",commitBpm);
+  bpmInput.addEventListener("keydown",e=>{if(e.key==="Enter")e.target.blur()});
+
+  const header=el("header",{class:"pat"},
+    el("div",{style:"display:flex;align-items:center;gap:10px"},
+      el("button",{style:"background:none;border:none;color:var(--led);font-family:var(--mono);font-size:16px;padding:4px 4px 4px 0",
+        onclick:()=>{Audio909.stop();S.openId=null;render()}},"◂"),
+      nameInput,
+      el("span",{class:"silk",text:"BPM"}),
+      bpmInput,
+      el("button",{class:"playbtn"+(Audio909.playing?" on":""),
+        onclick:()=>Audio909.toggle()},Audio909.playing?"■":"▶")),
+    el("div",{class:"readout"},
+      el("span",{text:`CYCLE ${info.steps}`}),
+      el("span",{text:fmtTime(info.secs)}),
+      el("span",{text:`${info.bars%1===0?info.bars:info.bars.toFixed(1)} BARS`})),
+    el("div",{class:"row",style:"margin-top:8px"},
+      ...SLOTS.map(k=>el("button",{class:S.slotKey===k?"on":"",
+        style:"padding:7px 4px;font-size:12px",
+        onclick:()=>{
+          if(!p.slots[k].initialised){
+            p.slots[k]=dc(p.slots.FULL);p.slots[k].initialised=true;save()}
+          S.slotKey=k;render()}},k))));
+
+  const main=el("main");
+  if(S.tab==="EDIT")renderEdit(main,p,slot);
+  else if(S.tab==="GEN")renderGen(main,p);
+  else if(S.tab==="CYCLE")renderCycle(main,slot,p.bpm,info);
+  else if(S.tab==="SHEET")renderSheet(main,p);
+
+  const nav=el("nav",{class:"tabs"},
+    ...["EDIT","GEN","CYCLE","SHEET"].map(t=>
+      el("button",{class:S.tab===t?"on":"",onclick:()=>{S.tab=t;render()}},t)));
+
+  app.append(header,main,nav);
+}
+
+/* ---------- edit ---------- */
+function tapStep(p,vIdx,sIdx){
+  const s=p.slots[S.slotKey].voices[vIdx].steps[sIdx];
+  const t=S.tool;
+  if(t==="HIT"){
+    s.on=!s.on;
+    if(!s.on){s.acc=false;s.rat=false;s.prob=null}
+  }else if(t==="ACC"){
+    if(!s.on){s.on=true;s.acc=true}
+    else s.acc=!s.acc;
+  }else if(t==="RAT"){
+    if(!s.on){s.on=true;s.rat=true}
+    else s.rat=!s.rat;
+  }else if(t==="PROB"){
+    if(!s.on)s.on=true;
+    s.prob=PROB_CYCLE[(PROB_CYCLE.indexOf(s.prob)+1)%PROB_CYCLE.length];
+  }
+  save();render();
+}
+
+function renderEdit(main,p,slot){
+  main.append(el("div",{class:"row",style:"margin-bottom:12px"},
+    ...["HIT","ACC","RAT","PROB"].map(t=>
+      el("button",{class:S.tool===t?"on":"",style:"padding:8px 4px;font-size:12px",
+        onclick:()=>{S.tool=t;render()}},t))));
+
+  slot.voices.forEach((v,vi)=>{
+    const nameIn=el("input",{class:"vname",value:v.name});
+    nameIn.addEventListener("input",e=>{
+      v.name=e.target.value.toUpperCase().slice(0,10);save()});
+
+    const soundSel=el("select",{class:"soundsel"});
+    SOUNDS.forEach(snd=>{
+      const o=el("option",{value:snd,text:snd});
+      if(v.sound===snd)o.selected=true;
+      soundSel.append(o)});
+    soundSel.addEventListener("change",e=>{v.sound=e.target.value;save()});
+
+    const lane=el("div",{class:"lane"},
+      el("div",{class:"lanehead"},
+        el("span",{class:"vlabel",text:"V"+(vi+1)}),
+        nameIn,
+        soundSel,
+        el("button",{class:"mute"+(v.muted?" on":""),
+          onclick:()=>{v.muted=!v.muted;save();render()}},"M"),
+        el("div",{style:"flex:1"}),
+        el("button",{class:"lastbtn",onclick:()=>{
+          v.last=Math.max(1,v.last-1);save();render()}},"−"),
+        el("span",{class:"lastval",text:String(v.last)}),
+        el("button",{class:"lastbtn",onclick:()=>{
+          v.last=Math.min(16,v.last+1);save();render()}},"+")));
+
+    [0,8].forEach(off=>{
+      const g=el("div",{class:"grid8"});
+      for(let i=off;i<off+8;i++){
+        const st=v.steps[i];
+        const beyond=i>=v.last;
+        const cls="cell"+(i%4===0?" beat":"")+(beyond?" beyond":"")+
+          (st.on&&!beyond?(st.acc?" lit acc":" lit"):"");
+        const cell=el("button",{class:cls,onclick:()=>tapStep(p,vi,i)});
+        if(st.on&&!beyond){
+          if(st.rat)cell.append(el("span",{class:"rat",text:"≡"}));
+          if(st.prob)cell.append(el("span",{class:"prob",text:st.prob}));
+        }else if(!beyond){
+          cell.append(el("span",{class:"num",text:String(i+1)}));
+        }
+        g.append(cell);
+      }
+      lane.append(g);
+    });
+    main.append(lane);
+  });
+
+  main.append(el("div",{class:"hint",
+    text:"HIT toggles a step on/off (off clears all flags) · ACC toggles accent · RAT toggles ratchet · PROB cycles O1 → O2 → PR → off. M mutes the voice in preview only. Steps beyond LAST are ignored by the Perkons."}));
+}
+
+/* ---------- gen ---------- */
+function runGen(){
+  const g=S.gen;
+  const rng=mulberry32(g.seed);
+  const style=STYLES[g.style];
+  const voices=style.gen(rng,g.drift);
+  const vars=deriveVariations(voices,rng);
+  const lasts=voices.filter(voiceActive).map(v=>v.last);
+  const steps=lasts.reduce((a,b)=>lcm2(a,b),1);
+  g.result={voices,vars,bpm:style.bpm,steps,secs:steps*(60/style.bpm/4)};
+}
+
+function renderGen(main,p){
+  const g=S.gen;
+  if(!g.result)runGen();
+  const style=STYLES[g.style];
+
+  main.append(
+    el("div",{class:"gengrid"},
+      ...Object.keys(STYLES).map(k=>
+        el("button",{class:g.style===k?"on":"",
+          onclick:()=>{g.style=k;runGen();render()}},STYLES[k].label))),
+    el("div",{style:"font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5",
+      text:style.blurb}),
+    el("div",{class:"row",style:"margin-bottom:12px"},
+      ...["TIGHT","DRIFT","DEEP"].map(d=>
+        el("button",{class:g.drift===d?"on":"",style:"padding:8px 4px;font-size:12px",
+          onclick:()=>{g.drift=d;runGen();render()}},d))),
+    el("div",{class:"row",style:"margin-bottom:12px"},
+      el("button",{class:"on",style:"flex:2;padding:12px",
+        onclick:()=>{g.seed=Math.floor(Math.random()*1e9);runGen();render()}},"↻ Roll"),
+      el("button",{class:g.autoVar?"on":"",style:"flex:3;font-size:11px",
+        onclick:()=>{g.autoVar=!g.autoVar;render()}},
+        (g.autoVar?"✓ ":"")+"Auto TENS/RELS/BRKD")));
+
+  const r=g.result;
+  const preview=el("div",{class:"card"},
+    el("div",{style:"font-size:12px;color:var(--led);margin-bottom:8px",
+      text:`CYCLE ${r.steps} · ${fmtTime(r.secs)} @ ${r.bpm} BPM`}));
+  r.voices.forEach((v,vi)=>{
+    preview.append(
+      el("div",{style:"font-size:11px",text:`V${vi+1} ${v.name} — LAST ${v.last} · ${hitsOf(v).length} hits`}),
+      el("div",{style:"font-size:11px;color:var(--dim);letter-spacing:.05em;margin-bottom:8px",
+        text:v.steps.slice(0,v.last).map(s=>s.on?(s.acc?"X":"x"):"-").join(" ")}));
+  });
+  preview.append(el("div",{style:"font-size:10px;color:var(--dim);margin-top:4px",
+    text:"X = accent · lower-case = hit · ghosts carry ODDS/PROB flags"}));
+
+  main.append(preview,
+    el("button",{class:"on",style:"width:100%;padding:13px",onclick:()=>{
+      p.bpm=r.bpm;
+      p.slots.FULL={initialised:true,voices:dc(r.voices)};
+      if(g.autoVar){
+        p.slots.TENS={initialised:true,voices:dc(r.vars.tens)};
+        p.slots.RELS={initialised:true,voices:dc(r.vars.rels)};
+        p.slots.BRKD={initialised:true,voices:dc(r.vars.brkd)};
+      }else{
+        SLOTS.slice(1).forEach(k=>{
+          p.slots[k]={initialised:false,voices:dc(r.voices).map(v=>({
+            ...v,steps:v.steps.map(()=>emptyStep())}))};
+        });
+      }
+      S.slotKey="FULL";S.tab="EDIT";save();render();
+    }},"Apply to pattern"),
+    el("div",{class:"hint",
+      text:"Overwrites this pattern's slots and sets BPM to the style tempo. Roll again if it's not talking to you."}));
+}
+
+/* ---------- cycle ---------- */
+function renderCycle(main,slot,bpm,info){
+  const wrap=el("div",{style:"position:relative"});
+  const canvas=el("canvas");
+  const cursor=el("div",{style:"position:absolute;top:0;bottom:0;left:0;width:1px;background:var(--silk);opacity:.85;pointer-events:none"});
+  wrap.append(canvas,cursor);
+
+  const slider=el("input",{type:"range",min:"0",max:"1000",value:String(S.scrub*1000)});
+  const infoCard=el("div",{class:"card",style:"margin-top:6px;font-size:12px"});
+  const active=slot.voices.map(voiceActive);
+
+  function drawInfo(){
+    const g=Math.round(S.scrub*(info.steps-1));
+    infoCard.innerHTML="";
+    infoCard.append(el("div",{style:"color:var(--led);margin-bottom:6px",
+      text:`STEP ${g+1} / ${info.steps} · ${fmtTime(g*(60/bpm/4))}`}));
+    slot.voices.forEach((v,vi)=>{
+      if(!active[vi])return;
+      const local=g%v.last;
+      const hit=v.steps[local].on;
+      infoCard.append(el("div",{style:`display:flex;gap:8px;opacity:${hit?1:.55}`},
+        el("span",{style:"color:var(--dim);min-width:24px",text:"V"+(vi+1)}),
+        el("span",{style:"min-width:80px",text:v.name}),
+        el("span",{text:`step ${local+1}/${v.last}`}),
+        el("span",{style:`color:${hit?"var(--led)":"var(--dim)"}`,text:hit?"●":"·"})));
+    });
+    cursor.style.left=(S.scrub*100)+"%";
+  }
+  slider.addEventListener("input",e=>{S.scrub=Number(e.target.value)/1000;drawInfo()});
+
+  main.append(wrap,slider,infoCard);
+
+  requestAnimationFrame(()=>{
+    const W=wrap.clientWidth;
+    const rowH=30,densH=22,H=rowH*4+densH+8;
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.height=H+"px";
+    const ctx=canvas.getContext("2d");
+    ctx.scale(dpr,dpr);
+    ctx.fillStyle="#141416";ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle="#1E1E22";ctx.lineWidth=1;
+    for(let g=0;g<=info.steps;g+=16){
+      const x=g/info.steps*W;
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+    }
+    const density=new Array(Math.ceil(W)).fill(0);
+    slot.voices.forEach((v,vi)=>{
+      if(!active[vi])return;
+      const y=vi*rowH+4;
+      for(let g=0;g<info.steps;g++){
+        const st=v.steps[g%v.last];
+        if(!st.on)continue;
+        const x=g/info.steps*W;
+        ctx.fillStyle=st.acc?"#F2F0EB":"#E0322A";
+        ctx.globalAlpha=info.steps>2000?.55:.9;
+        ctx.fillRect(x,y,Math.max(1,W/info.steps-.5),rowH-8);
+        density[Math.min(density.length-1,Math.floor(x))]+=1;
+      }
+    });
+    ctx.globalAlpha=1;
+    const dy=rowH*4+4;
+    const maxD=Math.max(1,...density);
+    for(let x=0;x<density.length;x++){
+      if(!density[x])continue;
+      const t=density[x]/maxD;
+      ctx.fillStyle="#E6E4DF";ctx.globalAlpha=.12+t*.7;
+      ctx.fillRect(x,dy+(1-t)*densH,1,t*densH);
+    }
+    ctx.globalAlpha=1;
+    ctx.font="700 10px Saira Condensed, sans-serif";
+    slot.voices.forEach((v,vi)=>{
+      ctx.fillStyle=active[vi]?"#E6E4DF":"#7A7A80";
+      ctx.fillText("V"+(vi+1),3,vi*rowH+16);
+    });
+    ctx.fillStyle="#7A7A80";ctx.fillText("HITS",3,dy+densH-4);
+    drawInfo();
+  });
+}
+
+/* ---------- sheet ---------- */
+function renderSheet(main,p){
+  const setupTa=el("textarea",{rows:"3",
+    placeholder:"Pattern-level setup: clock, BBD, routing, FX sends…"});
+  setupTa.value=p.setup;
+  setupTa.addEventListener("input",e=>{p.setup=e.target.value;save();refresh()});
+
+  const notesBlock=el("div",{style:"margin-top:12px"});
+  p.slots[S.slotKey].voices.forEach((v,vi)=>{
+    const ta=el("textarea",{rows:"2",
+      placeholder:"e.g. LFO on decay, BBD off, drive 2 o'clock"});
+    ta.value=v.notes;
+    ta.addEventListener("input",e=>{v.notes=e.target.value;save();refresh()});
+    notesBlock.append(
+      el("div",{style:"font-size:11px;color:var(--led);margin:8px 0 4px",
+        text:`V${vi+1} ${v.name}`}),ta);
+  });
+
+  const pre=el("pre",{class:"sheet"});
+  const copyBtn=el("button",{style:"width:100%;margin-top:10px",
+    onclick:e=>copyText(buildSheet(p,S.slotKey),e.target)},"Copy sheet");
+
+  function refresh(){pre.textContent=buildSheet(p,S.slotKey)}
+  refresh();
+
+  main.append(
+    el("div",{class:"silk",text:"Setup instructions (included in sheet)"}),
+    el("div",{style:"margin:6px 0 12px"},setupTa),
+    pre,copyBtn,
+    el("div",{class:"silk",style:"display:block;margin-top:16px",
+      text:"Per-voice notes (included in sheet)"}),
+    notesBlock);
+}
+
+render();
+</script>
+</body>
+</html>
